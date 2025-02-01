@@ -147,7 +147,7 @@ DOCKER_BUILDKIT=1 docker build . -t flink-sql-runner-example:latest
 kind load docker-image flink-sql-runner-example:latest
 ```
 
-And now create our service account, environment and application:
+And now create our CP Flink environment and application:
 
 ```shell
 cd ..
