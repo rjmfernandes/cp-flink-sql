@@ -198,7 +198,7 @@ And once inside the pod shell we can consume from final topic:
 kafka-console-consumer -topic message-count  --bootstrap-server localhost:9092
 ```
 
-Fnally again what you produce in first terminal/topic is counted on the other terminal/topic by our CP Flink SQL application.
+Finally (just as with Control Center from the browser) what you produce in first terminal/topic is counted on the other terminal/topic by our CP Flink SQL application.
 
 ## Cleanup
 
