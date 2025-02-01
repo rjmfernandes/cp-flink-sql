@@ -153,7 +153,7 @@ confluent flink environment create env1 --url http://localhost:8080 --kubernetes
 confluent flink application create application-sql.json --environment env1 --url http://localhost:8080
 ```
 
-Check pods are ready (q job manager and 3 task managers):
+Check pods are ready (1 job manager and 3 task managers):
 
 ```shell
 watch kubectl get pods
