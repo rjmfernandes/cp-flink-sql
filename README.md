@@ -87,7 +87,7 @@ Now we can forward the port of control center:
 kubectl -n confluent port-forward controlcenter-0 9021:9021 > /dev/null 2>&1 &
 ```
 
-And then open http://localhost:9021 and create a topic named `flink-input` and another named `message-count`.
+And then open http://localhost:9021 and check topics `flink-input` and `message-count` have been already created as per `kafka/kafka.yaml` file.
 
 ###  Install Confluent Manager for Apache Flink
 
@@ -173,6 +173,32 @@ And after a couple of seconds visit http://localhost:8090
 ## Let's Play
 
 Now you can start producing with Control Center into the topic `flink-input` (just use the default example payload) and in parallel see the new count messages arriving at the `message-count`.
+
+From command line you can have two terminals and in one run:
+
+```shell
+kubectl exec -it kafka-0 -n confluent -- sh 
+```
+
+Then on same shell inside container:
+
+```shell
+kafka-console-producer --topic flink-input --bootstrap-server localhost:9092
+```
+
+Now in the other terminal again:
+
+```shell
+kubectl exec -it kafka-0 -n confluent -- sh 
+```
+
+And once inside the pod shell we can consume from final topic:
+
+```shell
+kafka-console-consumer -topic message-count  --bootstrap-server localhost:9092
+```
+
+Fnally again what you produce in first terminal/topic is counted on the other terminal/topic by our CP Flink SQL application.
 
 ## Cleanup
 

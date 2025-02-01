@@ -36,3 +36,29 @@ spec:
     name: kafka
   kafkaRest:
     endpoint: http://kafka.confluent.svc.cluster.local:8090
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: flink-input
+  namespace: confluent
+spec:
+  kafkaRestClassRef:
+    name: krc-cfk
+  replicas: 3
+  partitionCount: 4
+  configs:
+    cleanup.policy: "delete"
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: message-count
+  namespace: confluent
+spec:
+  kafkaRestClassRef:
+    name: krc-cfk
+  replicas: 3
+  partitionCount: 4
+  configs:
+    cleanup.policy: "delete"
