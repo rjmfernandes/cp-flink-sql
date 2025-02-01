@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-producer
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-producer
+  template:
+    metadata:
+      labels:
+        app: kafka-producer
+    spec:
+      containers:
+        - name: kafka-producer
+          image: my-kafka-producer:latest
+          imagePullPolicy: Never           

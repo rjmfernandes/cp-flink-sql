@@ -1,0 +1,8 @@
+.DS_Store
+.vscode
+
+kafka/playground-clickcountproducer/target
+sql/flink-sql-runner-example/target
+
+kafka/playground-clickcountproducer/.idea
+sql/flink-sql-runner-example/.idea
