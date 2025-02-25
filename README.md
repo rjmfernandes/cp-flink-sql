@@ -125,7 +125,7 @@ helm upgrade --install cmf \
 confluentinc/confluent-manager-for-apache-flink 
 ```
 
-Check pods are ready:
+Check pods are ready (CFO and CMF):
 
 ```shell
 watch kubectl get pods
