@@ -40,6 +40,14 @@ You may need to wait a couple of seconds for dashboard to become available.
 
 Let it run and open another terminal.
 
+In case you are logged out cause of inactivity you may see errors as:
+
+```
+E0225 13:50:19.136484   67149 proxy_server.go:147] Error while proxying request: context canceled
+```
+
+Just login again using same token as before and ignore the errors.
+
 ### Start Kafka
 
 Run:
@@ -155,13 +163,32 @@ confluent flink environment create env1 --url http://localhost:8080 --kubernetes
 confluent flink application create application-sql.json --environment env1 --url http://localhost:8080
 ```
 
+In case you get an error like this:
+
+```
+Error: you must log out of Confluent Cloud to use this command
+
+Suggestions:
+    Log out with `confluent logout`.
+```
+
+Make sure to login into confluent cloud `confluent login` and logout after `confluent logout` (in case doing the logout only gives you an error), and execute again the creation of environment and aplication.
+
 Check pods are ready (1 job manager and 3 task managers):
 
 ```shell
 watch kubectl get pods
 ```
 
-We can check the Flink dashboard if we execute:
+In case you suffer from lack of resources delete the application and run a variation of it using less resources (just 1 job manager and 1 task manager):
+
+```shell
+confluent flink application delete sql-example --environment env1 --url http://localhost:8080
+confluent flink application create application-sql-minimal.json --environment env1 --url http://localhost:8080
+watch kubectl get pods
+```
+
+After all pods running we can check the Flink dashboard if we execute:
 
 ```shell
 cd ..
