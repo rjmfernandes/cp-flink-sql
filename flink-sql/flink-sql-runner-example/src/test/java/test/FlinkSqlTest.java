@@ -1,6 +1,7 @@
 package test;
 
 import org.apache.flink.table.api.*;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class FlinkSqlTest {
@@ -17,7 +18,7 @@ public class FlinkSqlTest {
         );
 
         // Verify the table exists
-        System.out.println(tableEnv.listTables()[0]);  // Should print "test_table"
+        Assertions.assertEquals("test_table", tableEnv.listTables()[0]);
     }
 }
 
