@@ -17,7 +17,7 @@ public class FlinkSqlTest {
         );
 
         // Verify the table exists
-        System.out.println(tableEnv.listTables());  // Should print "test_table"
+        System.out.println(tableEnv.listTables()[0]);  // Should print "test_table"
     }
 }
 
