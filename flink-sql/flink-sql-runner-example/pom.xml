@@ -17,14 +17,14 @@ specific language governing permissions and limitations
 under the License.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
 
     <artifactId>flink-sql-runner-example</artifactId>
     <name>Flink SQL Runner Example</name>
 
-     <parent>
+    <parent>
         <groupId>org.apache</groupId>
         <artifactId>apache</artifactId>
         <version>23</version>
@@ -36,30 +36,35 @@ under the License.
         <flink.version>1.19.1</flink.version>
         <slf4j.version>1.7.36</slf4j.version>
         <log4j.version>2.23.1</log4j.version>
+        <scala.binary.version>2.12</scala.binary.version>
     </properties>
 
     <dependencies>
         <!-- Apache Flink dependencies -->
+
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-table-api-java-bridge</artifactId>
+            <artifactId>flink-test-utils</artifactId>
             <version>${flink.version}</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-table-runtime</artifactId>
+            <artifactId>flink-table-planner_${scala.binary.version}</artifactId>
             <version>${flink.version}</version>
             <scope>test</scope>
         </dependency>
 
+
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-table-planner_2.12</artifactId>
+            <artifactId>flink-table-planner_${scala.binary.version}</artifactId>
             <version>${flink.version}</version>
+            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
+
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -91,21 +96,21 @@ under the License.
         </dependency>
         <!-- Add connector dependencies here. They must be in the default scope (compile). -->
 
-        
+
 
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-connector-kafka</artifactId>
             <version>3.3.0-1.19</version>
         </dependency>
-        
+
         <dependency>
-                <groupId>com.fasterxml.jackson</groupId>
-                <artifactId>jackson-bom</artifactId>
-                <type>pom</type>
-                <scope>import</scope>
-                <version>2.15.0</version>
-            </dependency>
+            <groupId>com.fasterxml.jackson</groupId>
+            <artifactId>jackson-bom</artifactId>
+            <type>pom</type>
+            <scope>import</scope>
+            <version>2.15.0</version>
+        </dependency>
 
         <!-- Add logging framework, to produce console output when running in the IDE. -->
         <!-- These dependencies are excluded from the application JAR by default. -->
