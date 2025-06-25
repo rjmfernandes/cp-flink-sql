@@ -115,14 +115,17 @@ Install Flink Kubernetes Operator:
 
 ```shell
 kubectl config set-context --current --namespace=default
-helm upgrade --install cp-flink-kubernetes-operator confluentinc/flink-kubernetes-operator
+helm upgrade --install cp-flink-kubernetes-operator --version "~1.120.0" \
+  confluentinc/flink-kubernetes-operator \
+  --set watchNamespaces="{default}"
 ```
 
 Install Confluent Manager for Apache Flink:
 
 ```shell
-helm upgrade --install cmf \
-confluentinc/confluent-manager-for-apache-flink 
+helm upgrade --install cmf --version "~2.0.0" \
+  confluentinc/confluent-manager-for-apache-flink \
+  --set cmf.sql.production=false 
 ```
 
 Check pods are ready (CFO and CMF):
