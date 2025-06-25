@@ -20,7 +20,7 @@ It's only meant to serve as an example or reference and does not replace the nee
 ### Start Kind K8s Cluster
 
 ```shell
-kind create cluster
+kind create cluster --image kindest/node:v1.31.0
 ```
 
 In order to run the k8s dashboard:
