@@ -2,7 +2,7 @@
    "apiVersion": "cmf.confluent.io/v1",
    "kind": "FlinkApplication",
    "metadata": {
-      "name": "sql-example"
+      "name": "sql-minimal-example"
    },
    "spec": {
       "flinkConfiguration": {

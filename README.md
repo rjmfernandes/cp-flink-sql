@@ -8,6 +8,7 @@
     - [Install Confluent Manager for Apache Flink](#install-confluent-manager-for-apache-flink)
   - [Flink SQL](#flink-sql)
   - [Let's Play](#lets-play)
+  - [A Batch Example](#a-batch-example)
   - [Cleanup](#cleanup)
 
 ## Disclaimer
@@ -198,6 +199,12 @@ cd ..
 confluent flink application web-ui-forward sql-example --environment env1 --port 8090 --url http://localhost:8080 > /dev/null 2>&1 &
 ```
 
+In case you used the minimal example use:
+
+```shell
+confluent flink application web-ui-forward sql-minimal-example --environment env1 --port 8090 --url http://localhost:8080 > /dev/null 2>&1 &
+```
+
 And after a couple of seconds visit http://localhost:8090
 
 ## Let's Play
@@ -229,6 +236,23 @@ kafka-console-consumer -topic message-count  --bootstrap-server localhost:9092
 ```
 
 Finally (just as with Control Center from the browser) what you produce in first terminal/topic is counted on the other terminal/topic by our CP Flink SQL application.
+
+
+## A Batch Example
+
+Let's execute (and wait for the job and task pods to be ready):
+
+```shell
+confluent flink application delete sql-minimal-example --environment env1 --url http://localhost:8080
+confluent flink application create flink-sql/application-sql-batch.json --environment env1 --url http://localhost:8080
+watch kubectl get pods
+```
+
+You can check the topic `msgCount` and confirm the message 1 written to it. You also may want to check the pods for the batch process and confirm the task managers have completed their process and exited (while the job manager is still running):
+
+```shell
+watch kubectl get pods
+```
 
 ## Cleanup
 

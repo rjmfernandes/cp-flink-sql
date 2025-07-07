@@ -2,7 +2,7 @@
    "apiVersion": "cmf.confluent.io/v1",
    "kind": "FlinkApplication",
    "metadata": {
-      "name": "sql-example"
+      "name": "sql-batch-example"
    },
    "spec": {
       "flinkConfiguration": {
@@ -17,7 +17,7 @@
       "job": {
          "jarURI": "local:///opt/flink/usrlib/sql-runner.jar",
          "args": ["/opt/flink/usrlib/sql-scripts/kafka-batch.sql"],
-         "parallelism": 3,
+         "parallelism": 1,
          "state": "running",
          "upgradeMode": "stateless"
       },
