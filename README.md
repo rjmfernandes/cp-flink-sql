@@ -9,7 +9,7 @@
 - [Flink SQL](#flink-sql)
   - [Let's Play](#lets-play)
     - [Control Center UI Stops Displaying Issue](#control-center-ui-stops-displaying-issue)
-  - [Cleanup](#cleanup)
+- [Cleanup](#cleanup)
 
 ## Disclaimer
 
@@ -288,7 +288,7 @@ Then reexecute:
 kubectl -n confluent port-forward controlcenter-ng-0 9021:9021 > /dev/null 2>&1 &
 ```
 
-## Cleanup
+# Cleanup
 
 ```shell
 kind delete cluster
