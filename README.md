@@ -6,7 +6,7 @@
   - [Start Kind K8s Cluster](#start-kind-k8s-cluster)
   - [Start Kafka](#start-kafka)
   - [Install Confluent Manager for Apache Flink](#install-confluent-manager-for-apache-flink)
-  - [Flink SQL](#flink-sql)
+- [Flink SQL](#flink-sql)
   - [Let's Play](#lets-play)
     - [Control Center UI Stops Displaying Issue](#control-center-ui-stops-displaying-issue)
   - [Cleanup](#cleanup)
@@ -141,7 +141,7 @@ Open port forwarding for CMF:
 kubectl port-forward service/cmf-service 8080:80 -n confluent > /dev/null 2>&1 &
 ```
 
-## Flink SQL
+# Flink SQL
 
 Let's first create our environment:
 
@@ -204,7 +204,7 @@ FROM `flink-input`;' \
   --url http://localhost:8080
 ```
 
-You should get as respomse something like this:
+You should get as response something like this:
 
 ```
 +---------------+-------------------------------------------------------+
