@@ -1,7 +1,2 @@
 .DS_Store
 .vscode
-
-fink-sql/flink-sql-runner-example/target
-
-flink-sql/flink-sql-runner-example/.idea
-flink-sql/flink-sql-runner-example/target
