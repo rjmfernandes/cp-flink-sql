@@ -72,6 +72,11 @@ spec:
       - confluent.telemetry.metrics.collector.interval.ms=60000
       - confluent.telemetry.remoteconfig._confluent.enabled=false
       - confluent.consumer.lag.emitter.enabled=true
+      - listeners=BROKER://0.0.0.0:9071,EXTERNAL://0.0.0.0:9094
+      - advertised.listeners=BROKER://kafka.confluent.svc.cluster.local:9071,EXTERNAL://localhost:9094
+      - controller.listener.names=CONTROLLER
+      - listener.security.protocol.map=BROKER:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - inter.broker.listener.name=BROKER
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: SchemaRegistry
@@ -131,7 +136,7 @@ spec:
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
 metadata:
-  name: message-count
+  name: myevent
   namespace: confluent
 spec:
   kafkaClusterRef:
@@ -145,7 +150,7 @@ spec:
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
 metadata:
-  name: flink-input
+  name: myaggregated
   namespace: confluent
 spec:
   kafkaClusterRef:
@@ -159,109 +164,107 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: message-count-value-avro-schema
+  name: myevent-value-avro-schema
   namespace: confluent
 data:
   schema: |
     {
-      "fields": [
-        {
-          "name": "id",
-          "type": "string"
+    "fields": [
+      {
+        "name": "id",
+        "type": "string",
+        "doc": "Unique identifier for the event"
+      },
+      {
+        "name": "value",
+        "type": "int",
+        "doc": "Some integer value to aggregate"
+      },
+      {
+        "name": "event_time",
+        "type": {
+          "type": "long",
+          "logicalType": "timestamp-millis"
         },
-        {
-          "name": "count",
-          "type": "long"
-        }
-      ],
-      "name": "SinkRecord",
-      "namespace": "com.example",
-      "type": "record"
+        "doc": "Timestamp of the event in milliseconds since the epoch"
+      },
+      {
+        "name": "category",
+        "type": ["null", "string"],
+        "default": null,
+        "doc": "Optional category for grouping"
+      }
+    ],
+    "type": "record",
+    "name": "MyEvent",
+    "namespace": "com.example.avro"
     }
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: flink-input-value-json-schema
+  name: myaggregated-value-avro-schema
   namespace: confluent
 data:
   schema: |
     {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": false,
-      "description": "Schema for an order event message.",
-      "properties": {
-        "address": {
-          "additionalProperties": false,
-          "description": "Shipping or billing address details.",
-          "properties": {
-            "city": {
-              "description": "City name.",
-              "type": "string"
-            },
-            "state": {
-              "description": "State or province abbreviation.",
-              "type": "string"
-            },
-            "zipcode": {
-              "description": "Zip or postal code.",
-              "type": "integer"
-            }
-          },
-          "required": [
-            "city",
-            "state",
-            "zipcode"
-          ],
-          "type": "object"
+    "type": "record",
+    "name": "MyAggregated",
+    "namespace": "com.example.flink.aggregated",
+    "fields": [
+      {
+        "name": "window_start",
+        "type": {
+          "type": "long",
+          "logicalType": "timestamp-millis"
         },
-        "itemid": {
-          "description": "Identifier for the item.",
-          "type": "string"
-        },
-        "orderid": {
-          "description": "Unique identifier for the order.",
-          "type": "integer"
-        },
-        "ordertime": {
-          "description": "Unix timestamp of the order in milliseconds.",
-          "type": "integer"
-        }
+        "doc": "Start timestamp of the aggregation window in milliseconds since the epoch"
       },
-      "required": [
-        "ordertime",
-        "orderid",
-        "itemid",
-        "address"
-      ],
-      "title": "OrderMessage",
-      "type": "object"
+      {
+        "name": "category",
+        "type": [
+          "null",
+          "string"
+        ],
+        "doc": "Category for the aggregated data (can be null if source category is null)"
+      },
+      {
+        "name": "total_value",
+        "type": "int",
+        "doc": "Sum of the 'value' field within the window"
+      },
+      {
+        "name": "event_count",
+        "type": "long",
+        "doc": "Count of events within the window"
+      }
+    ]
     }
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: Schema
 metadata:
-  name: message-count-value 
+  name: myevent-value 
   namespace: confluent
 spec:
   schemaRegistryClusterRef:
     name: schemaregistry
     namespace: confluent
   data:
-    configRef: message-count-value-avro-schema
+    configRef: myevent-value-avro-schema
     format: avro 
   compatibilityLevel: BACKWARD
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: Schema
 metadata:
-  name: flink-input-value 
+  name: myaggregated-value 
   namespace: confluent
 spec:
   schemaRegistryClusterRef:
     name: schemaregistry
     namespace: confluent
   data:
-    configRef: flink-input-value-json-schema
-    format: json 
+    configRef: myaggregated-value-avro-schema
+    format: avro 
   compatibilityLevel: BACKWARD

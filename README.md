@@ -96,7 +96,7 @@ Now we can forward the port of Control Center Next Generation:
 kubectl -n confluent port-forward controlcenter-ng-0 9021:9021 > /dev/null 2>&1 &
 ```
 
-And then open http://localhost:9021 and check topics `flink-input` and `message-count` have been already created with their corresponding schemas as per `kafka/kafka.yaml` file.
+And then open http://localhost:9021 and check topics `myevent` and `myaggregated` have been already created with their corresponding schemas as per `kafka/kafka.yaml` file.
 
 You should see an error stating `The system cannot connect to Confluent Manager for Apache Flink.`. It's expected cause we didnt install it yet.
 
@@ -186,7 +186,62 @@ We won't be able to see the compute pool listed in Control Center UI (at least o
 confluent flink compute-pool list --environment env1 --url http://localhost:8080
 ```
 
-Now we can submit our sql statement to the compute pool:
+## Let's Play
+
+Now first lets excute our script that will populate the input topic `myevent` for that we will forward first the ports of the broker and schema registry:
+
+```shell
+kubectl port-forward -n confluent pod/kafka-0 9094:9094 > /dev/null 2>&1 &
+kubectl port-forward svc/schemaregistry 8081:8081 -n confluent > /dev/null 2>&1 &
+```
+
+And then run the script:
+
+```shell
+./kafka/create_events.sh
+```
+
+You can see on Control Center the topic `myevent`start to get populated.
+
+Now in another shell we can open a flink shell using our compute pool and query our topic:
+
+```shell
+confluent --url http://localhost:8080 --environment env1 --compute-pool pool flink shell
+```
+
+We can run the following query over our topic:
+
+```sql
+SELECT
+  window_start,
+  category,
+  SUM(`value`) AS total_value,
+  COUNT(`id`) AS event_count
+FROM
+  TABLE(
+    TUMBLE(
+      TABLE `myevent` ,
+      DESCRIPTOR($rowtime), 
+      INTERVAL '10' SECOND
+    )
+  )
+GROUP BY
+  window_start,
+  window_end,
+  category;
+```
+
+Meanwhile in another shell you could run:
+
+```shell
+watch kubectl -n confluent get pods
+```
+
+And see the Flink cluster (job manager and task manager) being instantiated (as per our compute pool template definition) to execute our query. Once running the Flink sql shell should start receiving the results from our query.
+
+Once you hit `Q` quiting the execution of the query the cluster created should be terminated.
+
+Now you can quit the sql shell `quit;` and we can deploy our full statement that will populate the other topic `myaggreagted` with the query results:
 
 ```shell
 confluent --environment env1 flink statement create flink-statement \
@@ -194,13 +249,26 @@ confluent --environment env1 flink statement create flink-statement \
   --database main-kafka-cluster \
   --compute-pool pool \
   --parallelism 1 \
---sql $'INSERT INTO `message-count`
+--sql $'INSERT INTO `myaggregated` 
 /*+ OPTIONS(\'properties.transaction.timeout.ms\'=\'300000\') */
 SELECT
-  CAST(itemid AS BYTES) AS `key_key`,
-  itemid AS `id`,
-  CAST(CHAR_LENGTH(itemid) AS BIGINT) AS `count`
-FROM `flink-input`;' \
+  CAST(null as bytes) ,
+  window_start,
+  category,
+  SUM(`value`) AS total_value,
+  COUNT(`id`) AS event_count
+FROM
+  TABLE(
+    TUMBLE(
+      TABLE \`myevent\` ,
+      DESCRIPTOR($rowtime), 
+      INTERVAL \'10\' SECOND
+    )
+  )
+GROUP BY
+  window_start,
+  window_end,
+  category;' \
   --url http://localhost:8080
 ```
 
@@ -208,13 +276,16 @@ You should get as response something like this:
 
 ```
 +---------------+-------------------------------------------------------+
-| Creation Date | 2025-07-17T00:17:12.247Z                              |
+| Creation Date | 2025-07-28T23:48:14.523Z                              |
 | Name          | flink-statement                                       |
-| Statement     | INSERT INTO `message-count` /*+                       |
+| Statement     | INSERT INTO `myaggregated`  /*+                       |
 |               | OPTIONS('properties.transaction.timeout.ms'='300000') |
-|               | */ SELECT   CAST(itemid AS BYTES) AS `key_key`,       |
-|               | itemid AS `id`,   CAST(CHAR_LENGTH(itemid) AS BIGINT) |
-|               | AS `count` FROM `flink-input`;                        |
+|               | */ SELECT   CAST(null as bytes) ,   window_start,     |
+|               |   category,   SUM(`value`) AS total_value,            |
+|               | COUNT(`id`) AS event_count FROM   TABLE(     TUMBLE(  |
+|               |       TABLE `myevent` ,       DESCRIPTOR($rowtime),   |
+|               |        INTERVAL '10' SECOND     )   ) GROUP BY        |
+|               | window_start,   window_end,   category;               |
 | Compute Pool  | pool                                                  |
 | Status        | PENDING                                               |
 | Status Detail | Statement execution pending.                          |
@@ -225,20 +296,13 @@ You should get as response something like this:
 +---------------+-------------------------------------------------------+
 ```
 
-You can check the start of the pods (jobmanager and taskmanager) for the execution of our statement with:
+You can check the start of the pods (jobmanager and taskmanager) for the execution of our statement just like before with:
 
 ```shell
 watch kubectl -n confluent get pods
 ```
 
-This statement job is basically counting the numbers of characters on the `itemid` field of the json messages entering the topic `flink-input` and sinking the `count` into the `message-count` topic. Using the `itemid` value for the `key` and the field `id` of the message in `message-count`.
-
-## Let's Play
-
-You can have open one browser window of control center on the `flink-input` messages tab and the other into the `message-count` topic:
-
-- As you produce a message using the sample message of Control Center into the `flink-input` topic, you should see the count for the `itemid` field show up on `message-count` topic.
-- You can try changing the value of the `itemid` field in other entries of `flink-input` and see the `count` change for `message-count`.
+Once running if you go in Control Center to the message viewer of the topic `myaggregated` you should be able to see it getting populated.
 
 You can check the status of the statement execution by running:
 
@@ -249,10 +313,10 @@ confluent flink statement list --environment env1 --url http://localhost:8080
 You can also open the Flink UI by executing:
 
 ```shell
-kubectl port-forward service/flink-statement-rest 8081:8081 -n confluent > /dev/null 2>&1 &
+kubectl port-forward service/flink-statement-rest 8082:8081 -n confluent > /dev/null 2>&1 &
 ```
 
-And then access http://localhost:8081
+And then access http://localhost:8082
 
 If you wish to delete the statement just execute:
 
@@ -264,12 +328,6 @@ You should see the pods getting terminated with:
 
 ```shell
 watch kubectl -n confluent get pods
-```
-
-After you can also delete the compute pool with:
-
-```shell
-confluent flink compute-pool delete pool --environment env1 --url http://localhost:8080
 ```
 
 ### Control Center UI Stops Displaying Issue
