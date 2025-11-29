@@ -58,7 +58,8 @@ kubectl create namespace confluent
 kubectl config set-context --current --namespace=confluent
 helm repo add confluentinc https://packages.confluent.io/helm
 helm repo update
-helm upgrade --install operator confluentinc/confluent-for-kubernetes
+helm upgrade --install operator confluentinc/confluent-for-kubernetes \
+  --version "0.1351.24"
 ```
 
 Check pod is ready:
@@ -118,14 +119,16 @@ Install Flink Kubernetes Operator:
 
 ```shell
 kubectl config set-context --current --namespace=confluent
-helm upgrade --install cp-flink-kubernetes-operator --version "~1.120.0" confluentinc/flink-kubernetes-operator --set watchNamespaces="{confluent}"
+helm repo add confluentinc  https://packages.confluent.io/hel
+helm repo update
+helm upgrade --install cp-flink-kubernetes-operator confluentinc/flink-kubernetes-operator --version "~1.130.0" --set watchNamespaces="{confluent}"
 ```
 
 Install Confluent Manager for Apache Flink:
 
 ```shell
 helm upgrade --install cmf confluentinc/confluent-manager-for-apache-flink \
-    --set cmf.sql.production=false \
+    --version "~2.1.0" --set cmf.sql.production=false \
     --namespace confluent
 ```
 
@@ -140,6 +143,8 @@ Open port forwarding for CMF:
 ```shell
 kubectl port-forward service/cmf-service 8080:80 -n confluent > /dev/null 2>&1 &
 ```
+
+At this point no error `The system cannot connect to Confluent Manager for Apache Flink.` should show up in Control Center home page.
 
 # Flink SQL
 
@@ -173,8 +178,23 @@ Now we can create our catalog (basically allowing Flink to automatically recogni
 ```shell
 confluent flink catalog create flink/catalog.json --url http://localhost:8080
 ```
+You should get something like:
 
-Now we can create our compute pool:
+```
++---------------+--------------------------+
+| Creation Time | 2025-11-29T18:59:34.197Z |
+| Name          | kafka-cat                |
+| Databases     |                          |
++---------------+--------------------------+
+```
+
+With CMF 2.1 catalogs no longer embed Kafka clusters; you must create a separate KafkaDatabase under the catalog. The CLI does not yet support the creation of databases inside the catalog so we will use the CMF REST API:
+
+```shell
+curl -H "Content-Type: application/json" -X POST  http://localhost:8080/cmf/api/v1/catalogs/kafka/kafka-cat/databases -d @flink/database.json
+```
+
+Now we can create our compute pool (There is no cp-flink-sql 2.x image in CP 8.1, so SQL compute pools must stay on 1.19):
 
 ```shell
 confluent flink compute-pool create flink/compute-pool.json --environment env1 --url http://localhost:8080

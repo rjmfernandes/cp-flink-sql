@@ -9,14 +9,6 @@
       "connectionConfig": {
         "schema.registry.url": "http://schemaregistry.confluent.svc.cluster.local:8081"
       }
-    },
-    "kafkaClusters": [
-      {
-        "databaseName": "main-kafka-cluster", 
-        "connectionConfig": {
-          "bootstrap.servers": "kafka.confluent.svc.cluster.local:9071"
-        }
-      }
-    ]
+    }
   }
 }
