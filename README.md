@@ -128,7 +128,7 @@ Install Confluent Manager for Apache Flink:
 
 ```shell
 helm upgrade --install cmf confluentinc/confluent-manager-for-apache-flink \
-    --version "~2.1.0" --set cmf.sql.production=false \
+    --version "~2.1.2" --set cmf.sql.production=false \
     --namespace confluent
 ```
 
@@ -192,6 +192,12 @@ With CMF 2.1 catalogs no longer embed Kafka clusters; you must create a separate
 
 ```shell
 curl -H "Content-Type: application/json" -X POST  http://localhost:8080/cmf/api/v1/catalogs/kafka/kafka-cat/databases -d @flink/database.json
+```
+
+You can list the databases with:
+
+```shell
+curl  http://localhost:8080/cmf/api/v1/catalogs/kafka/kafka-cat/databases
 ```
 
 Now we can create our compute pool (There is no cp-flink-sql 2.x image in CP 8.1, so SQL compute pools must stay on 1.19):
