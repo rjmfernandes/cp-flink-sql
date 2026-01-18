@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: s3proxy-init
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: mc
+        image: minio/mc:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          until mc alias set s3proxy http://s3proxy:8000 admin password; do
+            echo '...waiting...'
+            sleep 1
+          done
+          mc mb -p s3proxy/warehouse
+      initContainers:
+      - name: wait-for-s3proxy
+        image: busybox:1.28
+        command: ['sh', '-c', 'until nc -z s3proxy 8000; do echo waiting for s3proxy; sleep 2; done']

@@ -12,7 +12,38 @@
       "flinkConfiguration": {
         "pipeline.operator-chaining.enabled": "false",
         "execution.checkpointing.interval": "10s",
-        "taskmanager.numberOfTaskSlots": "4"
+        "taskmanager.numberOfTaskSlots": "4",
+        "state.checkpoints.dir": "s3://warehouse/checkpoints/",
+        "state.savepoints.dir": "s3://warehouse/savepoints/",
+        "s3.endpoint": "http://s3proxy:8000",
+        "s3.path.style.access": "true",
+        "s3.connection.ssl.enabled": "false",
+        "s3.access-key": "admin",
+        "s3.secret-key": "password",
+        "state.backend": "filesystem",
+        "state.checkpoints.timeout": "600000",
+        "execution.checkpointing.min-pause": "5000",
+        "execution.checkpointing.max-concurrent-checkpoints": "1",
+        "high-availability.type": "kubernetes",
+        "high-availability.storageDir": "s3://warehouse/",
+        "jobmanager.memory.process.size": "1700m",
+        "taskmanager.memory.process.size": "1700m",
+        "state.checkpoints.num-retained": "10"
+      },
+      "podTemplate": {
+        "spec": {
+          "restartPolicy": "Always",
+          "terminationGracePeriodSeconds": 30,
+          "containers": [
+            {
+              "name": "flink-main-container",
+              "imagePullPolicy": "IfNotPresent",
+              "securityContext": {
+                "runAsUser": 9999
+              }
+            }
+          ]
+        }
       },
       "taskManager": {
         "resource": {

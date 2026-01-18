@@ -5,9 +5,15 @@
 - [Setup](#setup)
   - [Start Kind K8s Cluster](#start-kind-k8s-cluster)
   - [Start Kafka](#start-kafka)
+  - [Start S3proxy](#start-s3proxy)
   - [Install Confluent Manager for Apache Flink](#install-confluent-manager-for-apache-flink)
 - [Flink SQL](#flink-sql)
   - [Let's Play](#lets-play)
+    - [Producing to Kafka](#producing-to-kafka)
+    - [SQL Shell](#sql-shell)
+    - [Checkpoints](#checkpoints)
+    - [Back to our SQL Shell](#back-to-our-sql-shell)
+    - [Statements](#statements)
     - [Control Center UI Stops Displaying Issue](#control-center-ui-stops-displaying-issue)
 - [Cleanup](#cleanup)
 
@@ -100,6 +106,52 @@ kubectl -n confluent port-forward controlcenter-ng-0 9021:9021 > /dev/null 2>&1 
 And then open http://localhost:9021 and check topics `myevent` and `myaggregated` have been already created with their corresponding schemas as per `kafka/kafka.yaml` file.
 
 You should see an error stating `The system cannot connect to Confluent Manager for Apache Flink.`. It's expected cause we didnt install it yet.
+
+## Start S3proxy
+
+Let's start S3proxy:
+
+```shell
+kubectl apply -f ./s3proxy/s3proxy-deployment.yaml
+kubectl apply -f ./s3proxy/s3proxy-init-job.yaml
+```
+
+And wait for pods to be ready:
+
+```shell
+watch kubectl -n confluent get pods
+```
+
+You should see something as:
+
+```
+NAME                                  READY   STATUS      RESTARTS        AGE
+confluent-operator-5dcb4c6b99-5dv57   1/1     Running     0               6m56s
+controlcenter-ng-0                    3/3     Running     1 (3m2s ago)    6m35s
+kafka-0                               1/1     Running     1 (4m40s ago)   4m50s
+kraftcontroller-0                     1/1     Running     0               6m35s
+s3proxy-695cc84bf-zgp77               1/1     Running     0               56s
+s3proxy-init-pq9zm                    0/1     Completed   0               56s
+schemaregistry-0                      1/1     Running     4 (5m5s ago)    6m35s
+```
+
+And then port-forward to access locally:
+
+```shell
+kubectl -n confluent port-forward service/s3proxy 8000:8000 > /dev/null 2>&1 &
+```
+
+You can use a client as `Cyberduck` to connect to. Open the profile file `./cyberduck/S3_http.cyberduckprodfile`. Configure: 
+
+```
+Protocol            S3Proxy (http, path-style)
+Server              localhost
+Port                8000
+Access Key ID       admin
+Secret Access Key   password
+```
+
+It should list just a single folder named `warehouse`.
 
 ## Install Confluent Manager for Apache Flink
 
@@ -214,6 +266,8 @@ confluent flink compute-pool list --environment env1 --url http://localhost:8080
 
 ## Let's Play
 
+### Producing to Kafka
+
 Now first lets excute our script that will populate the input topic `myevent` for that we will forward first the ports of the broker and schema registry:
 
 ```shell
@@ -228,6 +282,8 @@ And then run the script:
 ```
 
 You can see on Control Center the topic `myevent`start to get populated.
+
+### SQL Shell
 
 Now in another shell we can open a flink shell using our compute pool and query our topic:
 
@@ -265,9 +321,39 @@ watch kubectl -n confluent get pods
 
 And see the Flink cluster (job manager and task manager) being instantiated (as per our compute pool template definition) to execute our query. Once running the Flink sql shell should start receiving the results from our query.
 
+### Checkpoints
+
+If you navigate to your warehouse bucket in S3proxy you should see something like:
+
+![Checkpoints](images/checkpoints.png)
+
+Let's review the meaning of each folder/file:
+
+- `checkpoints/` This is the checkpoint storage directory. A Flink checkpoint is a consistent snapshot of a running job’s state that Flink periodically saves so it can resume processing exactly from where it left off after a failure.
+  - `922..`  That is the Flink JobID (one folder per running job). You will probably just have one for the Flink SQL you submitted on the shell.
+  - `chk-19`, `chk-20`, ... Each chk-N is one completed checkpoint (N is the checkpoint ID counter). We have configured `state.checkpoints.num-retained` equal to 10. So only the last 20 checkpoints at each moment will be kept.
+  - `_metadata` This is the checkpoint “manifest” file. It contains the serialized metadata that tells Flink: which operators/tasks were snapshotted, what state handles exist, where the state files are and how to restore the job from that checkpoint. Since our job’s state is small, Flink will store it in a very compact way in _metadata.
+- `cli-2026-01-18-...`  It’s not the checkpoint state itself — it’s the stuff Flink needs so the cluster/job can recover after a JobManager failure. What's configured by `high-availability.storageDir` set to `s3://warehouse/`.
+  - `blob\`  This is Flink’s BLOB store (binary large objects). It holds artifacts needed to run/recover the job, such as: uploaded JARs (if any), serialized execution plan pieces, sometimes SQL client artifacts, etc.
+    - `job_1f1ca098…/`  Per-job subdirectory in the HA/BLOB storage (again that long hex is the JobID).
+      - `blob_p-…` The permanent blob entry.
+    - `completedCheckpoint…` This is NOT the checkpoint data. It’s HA metadata that represents the CompletedCheckpointStore pointer/registry (basically “what checkpoints are considered completed and usable for recovery” and references to them).
+    - `submittedJobGraph…` This is the submitted JobGraph (the job definition that the dispatcher/jobmanager uses to recover the job after failover). If the JM dies and comes back, this is one of the things it consults to resubmit/recreate execution. 
+- `job-result-store/` You may not have this one. It's used by Flink’s Dispatcher / HA layer to persist the final outcome of a job so that: the cluster knows whether a job FINISHED, FAILED, or was CANCELED; the result survives JobManager restarts; clients (SQL Client, REST API) can still query job status after termination. This is not checkpoint state and not HA blobs — it’s purely job lifecycle metadata.
+  - `cli-2026-01-18-01461…-9892` This is the Dispatcher / client session ID (same prefix you saw elsewhere). Think: “this SQL Client / session submitted jobs under this namespace” 
+    - `d521c45a-e90f-481d-9d2c-9fed17510066` This is the JobID of the job completed, failed or canceled.
+      - `…_DIRTY.json` A job result marked as DIRTY means: “This job did not terminate in a globally clean, finalized way.” Typical causes: Job was CANCELLED, JobManager crashed during termination, HA recovery was interrupted. In contrast: SUCCESS.json → job finished normally, FAILED.json → job failed with an exception. Usually contains: jobId, application / job name, final status = CANCELED/FINISHED/FAILED, timestamps, possibly partial execution metadata. It’s intentionally small.
+
+
+### Back to our SQL Shell
+
 Once you hit `Q` quiting the execution of the query the cluster created should be terminated.
 
-Now you can quit the sql shell `quit;` and we can deploy our full statement that will populate the other topic `myaggreagted` with the query results:
+Now you can quit the sql shell `quit;`. 
+
+### Statements
+
+We can deploy our full statement that will populate the other topic `myaggreagted` with the query results:
 
 ```shell
 confluent --environment env1 flink statement create flink-statement \

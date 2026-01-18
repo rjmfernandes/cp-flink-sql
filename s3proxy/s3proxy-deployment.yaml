@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s3proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s3proxy
+  template:
+    metadata:
+      labels:
+        app: s3proxy
+    spec:
+      containers:
+      - name: s3proxy
+        image: andrewgaul/s3proxy:3.0.0
+        ports:
+        - containerPort: 8000
+        env:
+        - name: S3PROXY_AUTHORIZATION
+          value: "aws-v2-or-v4"
+        - name: S3PROXY_IDENTITY
+          value: "admin"
+        - name: S3PROXY_CREDENTIAL
+          value: "password"
+        - name: S3PROXY_ENDPOINT
+          value: "http://0.0.0.0:8000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: s3proxy
+spec:
+  selector:
+    app: s3proxy
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP  # or LoadBalancer/NodePort for external access

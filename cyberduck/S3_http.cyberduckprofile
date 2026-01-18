@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Protocol</key>
+    <string>s3</string>
+
+    <key>Vendor</key>
+    <string>s3proxy-local-http</string>
+
+    <key>Scheme</key>
+    <string>http</string>
+
+    <key>Description</key>
+    <string>S3Proxy (http, path-style)</string>
+
+    <key>Default Hostname</key>
+    <string>localhost</string>
+
+    <key>Default Port</key>
+    <string>8000</string>
+
+    <key>Hostname Configurable</key>
+    <true/>
+    <key>Port Configurable</key>
+    <true/>
+    <key>Username Configurable</key>
+    <true/>
+
+    <!-- IMPORTANT: force path-style; prevents warehouse.localhost -->
+    <key>Properties</key>
+    <array>
+      <string>s3.bucket.virtualhost.disable=true</string>
+      <string>s3.bucket.virtualhost=false</string>
+    </array>
+  </dict>
+</plist>
