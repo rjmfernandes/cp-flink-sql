@@ -12,7 +12,9 @@
     - [Producing to Kafka](#producing-to-kafka)
     - [SQL Shell](#sql-shell)
     - [Checkpoints](#checkpoints)
-    - [Back to our SQL Shell](#back-to-our-sql-shell)
+    - [Savepoints](#savepoints)
+    - [Resume from last checkpoint](#resume-from-last-checkpoint)
+    - [Resume from a savepoint](#resume-from-a-savepoint)
     - [Statements](#statements)
     - [Control Center UI Stops Displaying Issue](#control-center-ui-stops-displaying-issue)
 - [Cleanup](#cleanup)
@@ -344,12 +346,243 @@ Let's review the meaning of each folder/file:
     - `d521c45a-e90f-481d-9d2c-9fed17510066` This is the JobID of the job completed, failed or canceled.
       - `…_DIRTY.json` A job result marked as DIRTY means: “This job did not terminate in a globally clean, finalized way.” Typical causes: Job was CANCELLED, JobManager crashed during termination, HA recovery was interrupted. In contrast: SUCCESS.json → job finished normally, FAILED.json → job failed with an exception. Usually contains: jobId, application / job name, final status = CANCELED/FINISHED/FAILED, timestamps, possibly partial execution metadata. It’s intentionally small.
 
+### Savepoints
 
-### Back to our SQL Shell
+Let's see the name of our statement (being executed from the SQL shell):
+
+```shell
+cconfluent flink statement list \
+  --environment env1 \
+  --url http://localhost:8080 -o yaml
+```
+
+We should see something like:
+
+```
+- apiversion: cmf.confluent.io/v1
+  kind: Statement
+  metadata:
+    name: cli-2026-01-18-020550-fd9e7488-4438-490f-8c2f
+    creationtimestamp: "2026-01-18T01:05:50.865Z"
+    updatetimestamp: "2026-01-18T01:05:50.865Z"
+    uid: 557e7423-f4dd-44d2-9aab-3e9a29419813
+    labels: {}
+    annotations: {}
+  spec:
+    statement: "SELECT\n  window_start,\n  category,\n  SUM(`value`) AS total_value,\n  COUNT(`id`) AS event_count\nFROM\n  TABLE(\n    TUMBLE(\n      TABLE `myevent` ,\n      DESCRIPTOR($rowtime), \n      INTERVAL '10' SECOND\n    )\n  )\nGROUP BY\n  window_start,\n  window_end,\n  category;"
+    properties: {}
+    flinkconfiguration: {}
+    computepoolname: pool
+    parallelism: 1
+    stopped: false
+  status:
+    phase: RUNNING
+    detail: Statement execution in progress.
+    traits:
+        sqlkind: SELECT
+        isbounded: false
+        isappendonly: true
+        upsertcolumns: []
+        schema:
+            columns:
+                - name: window_start
+                  type:
+                    type: TIMESTAMP_WITHOUT_TIME_ZONE
+                    nullable: false
+                    length: null
+                    precision: 3
+                    scale: null
+                    keytype: null
+                    valuetype: null
+                    elementtype: null
+                    fields: []
+                    resolution: null
+                    fractionalprecision: null
+                - name: category
+                  type:
+                    type: VARCHAR
+                    nullable: true
+                    length: 2147483647
+                    precision: null
+                    scale: null
+                    keytype: null
+                    valuetype: null
+                    elementtype: null
+                    fields: []
+                    resolution: null
+                    fractionalprecision: null
+                - name: total_value
+                  type:
+                    type: INTEGER
+                    nullable: false
+                    length: null
+                    precision: null
+                    scale: null
+                    keytype: null
+                    valuetype: null
+                    elementtype: null
+                    fields: []
+                    resolution: null
+                    fractionalprecision: null
+                - name: event_count
+                  type:
+                    type: BIGINT
+                    nullable: false
+                    length: null
+                    precision: null
+                    scale: null
+                    keytype: null
+                    valuetype: null
+                    elementtype: null
+                    fields: []
+                    resolution: null
+                    fractionalprecision: null
+  result: null
+```
+
+So we see it is `cli-2026-01-18-020550-fd9e7488-4438-490f-8c2f` (whatever similar in your case). We can see this is the same name prefix used by our Flink Job Manager and Task Managers pods if we execute:
+
+```shell
+kubectl -n confluent get pods
+```
+
+Besides also the name of the Dispatcher / client session ID used in S3proxy before for JobManager high availability and result store.
+
+We can then call a manual backup (savepoint) of our statement by executing (replace the statement name by whatever applicable in your case):
+
+```shell
+coconfluent flink savepoint create save-explicit-1 \
+  --statement cli-2026-01-18-020550-fd9e7488-4438-490f-8c2f \
+  --environment env1 \
+  --url http://localhost:8080 \
+  --path s3://warehouse/savepoints/manual/ \
+  --backoff-limit 0 \
+  -o yaml
+```
+
+*Important*: You need to pass the path because even if it's defined in the compute pool configuration it's not being passed to the Flink Job Manager so that without it will use an empty string and result in an error.
+
+After check its status:
+
+```shell
+confluent flink savepoint describe save-explicit-1 \
+  --statement cli-2026-01-18-020550-fd9e7488-4438-490f-8c2f \
+  --environment env1 \
+  --url http://localhost:8080 \
+  -o yaml
+```
+
+You should get something like:
+
+```
+apiVersion: cmf.confluent.io/v1
+kind: Savepoint
+metadata:
+    name: save-explicit-1
+    creationTimestamp: "2026-01-18T02:14:28.199Z"
+    uid: 9e716978-c8d0-4514-b6f5-58ab3acf29fe
+    labels: {}
+    annotations: {}
+spec:
+    path: s3://warehouse/savepoints/manual/
+    backoffLimit: 0
+    formatType: CANONICAL
+status:
+    state: COMPLETED
+    path: s3://warehouse/savepoints/manual/savepoint-922816-6ad3a1b58c97
+    triggerTimestamp: "2026-01-18T02:14:28.250034175Z"
+    resultTimestamp: "2026-01-18T02:14:43.322045335Z"
+    failures: 0
+```
+
+And you should see in Cyberduck something like:
+
+![Savepoints](images/savepoints.png)
+
+### Resume from last checkpoint
 
 Once you hit `Q` quiting the execution of the query the cluster created should be terminated.
 
 Now you can quit the sql shell `quit;`. 
+
+If you execute:
+
+```shell
+confluent flink statement list --environment env1 --url http://localhost:8080
+```
+
+You should see the reference to your stopped statement.
+
+We could resume it by executing:
+
+```shell
+confluent flink statement resume cli-2026-01-18-020550-fd9e7488-4438-490f-8c2f --environment env1 --url http://localhost:8080
+```
+
+And check its status again:
+
+```shell
+confluent flink statement list --environment env1 --url http://localhost:8080
+```
+
+It was capable to resume using the last checkpoint.
+
+### Resume from a savepoint
+
+Now if we list our savepoints:
+
+```shell
+confluent flink savepoint list \
+  --statement cli-2026-01-18-020550-fd9e7488-4438-490f-8c2f \
+  --environment env1 \
+  --url http://localhost:8080 \
+  -o yaml
+```
+
+We see our last savepoint `save-explicit-1` and we can use it to start from there. So we first stop our statement:
+
+```shell
+confluent flink statement stop \
+  cli-2026-01-18-020550-fd9e7488-4438-490f-8c2f \
+  --environment env1 \
+  --url http://localhost:8080
+```
+
+Now we can leverage the CMF REST API (since this is not yet available on Confluent CLI):
+
+```shell
+cucurl -sS -X PUT \
+  -H "Content-Type: application/json" \
+  "http://localhost:8080/cmf/api/v1/environments/env1/statements/cli-2026-01-18-020550-fd9e7488-4438-490f-8c2f" \
+  -d @- <<'EOF'
+{
+  "apiVersion": "cmf.confluent.io/v1",
+  "kind": "Statement",
+  "metadata": {
+    "name": "cli-2026-01-18-020550-fd9e7488-4438-490f-8c2f"
+  },
+  "spec": {
+    "statement": "SELECT\n  window_start,\n  category,\n  SUM(`value`) AS total_value,\n  COUNT(`id`) AS event_count\nFROM\n  TABLE(\n    TUMBLE(\n      TABLE `myevent` ,\n      DESCRIPTOR($rowtime), \n      INTERVAL '10' SECOND\n    )\n  )\nGROUP BY\n  window_start,\n  window_end,\n  category;",
+    "properties": {},
+    "flinkConfiguration": {},
+    "computePoolName": "pool",
+    "parallelism": 1,
+    "stopped": false,
+    "startFromSavepoint": {
+      "savepointName": "save-explicit-1",
+      "allowNonRestoredState": false,
+      "savepointRedeployNonce": 1
+    }
+  }
+}
+EOF
+```
+
+If we check our pods we should see the restart happening. And we can check the status of the statement:
+
+```shell
+confluent flink statement list --environment env1 --url http://localhost:8080
+```
 
 ### Statements
 
