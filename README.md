@@ -451,7 +451,7 @@ Besides also the name of the Dispatcher / client session ID used in S3proxy befo
 We can then call a manual backup (savepoint) of our statement by executing (replace the statement name by whatever applicable in your case):
 
 ```shell
-coconfluent flink savepoint create save-explicit-1 \
+confluent flink savepoint create save-explicit-1 \
   --statement cli-2026-01-18-020550-fd9e7488-4438-490f-8c2f \
   --environment env1 \
   --url http://localhost:8080 \
@@ -460,7 +460,7 @@ coconfluent flink savepoint create save-explicit-1 \
   -o yaml
 ```
 
-*Important*: You need to pass the path because even if it's defined in the compute pool configuration it's not being passed to the Flink Job Manager so that without it will use an empty string and result in an error.
+**Important**: You need to pass the path because even if it's defined in the compute pool configuration it's not being passed to the Flink Job Manager so that without it will use an empty string and result in an error.
 
 After check its status:
 
@@ -551,7 +551,7 @@ confluent flink statement stop \
 Now we can leverage the CMF REST API (since this is not yet available on Confluent CLI):
 
 ```shell
-cucurl -sS -X PUT \
+curl -sS -X PUT \
   -H "Content-Type: application/json" \
   "http://localhost:8080/cmf/api/v1/environments/env1/statements/cli-2026-01-18-020550-fd9e7488-4438-490f-8c2f" \
   -d @- <<'EOF'
