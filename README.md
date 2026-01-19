@@ -173,7 +173,7 @@ Install Flink Kubernetes Operator:
 
 ```shell
 kubectl config set-context --current --namespace=confluent
-helm repo add confluentinc  https://packages.confluent.io/hel
+helm repo add confluentinc  https://packages.confluent.io/helm
 helm repo update
 helm upgrade --install cp-flink-kubernetes-operator confluentinc/flink-kubernetes-operator --version "~1.130.0" --set watchNamespaces="{confluent}"
 ```
@@ -333,7 +333,7 @@ Let's review the meaning of each folder/file:
 
 - `checkpoints/` This is the checkpoint storage directory. A Flink checkpoint is a consistent snapshot of a running job’s state that Flink periodically saves so it can resume processing exactly from where it left off after a failure.
   - `922..`  That is the Flink JobID (one folder per running job). You will probably just have one for the Flink SQL you submitted on the shell.
-  - `chk-19`, `chk-20`, ... Each chk-N is one completed checkpoint (N is the checkpoint ID counter). We have configured `state.checkpoints.num-retained` equal to 10. So only the last 20 checkpoints at each moment will be kept.
+  - `chk-19`, `chk-20`, ... Each chk-N is one completed checkpoint (N is the checkpoint ID counter). We have configured `state.checkpoints.num-retained` equal to 10. So only the last 10 checkpoints at each moment will be kept.
   - `_metadata` This is the checkpoint “manifest” file. It contains the serialized metadata that tells Flink: which operators/tasks were snapshotted, what state handles exist, where the state files are and how to restore the job from that checkpoint. Since our job’s state is small, Flink will store it in a very compact way in _metadata.
 - `cli-2026-01-18-...`  It’s not the checkpoint state itself — it’s the stuff Flink needs so the cluster/job can recover after a JobManager failure. What's configured by `high-availability.storageDir` set to `s3://warehouse/`.
   - `blob\`  This is Flink’s BLOB store (binary large objects). It holds artifacts needed to run/recover the job, such as: uploaded JARs (if any), serialized execution plan pieces, sometimes SQL client artifacts, etc.
@@ -351,7 +351,7 @@ Let's review the meaning of each folder/file:
 Let's see the name of our statement (being executed from the SQL shell):
 
 ```shell
-cconfluent flink statement list \
+confluent flink statement list \
   --environment env1 \
   --url http://localhost:8080 -o yaml
 ```
