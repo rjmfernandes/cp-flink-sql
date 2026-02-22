@@ -12,6 +12,7 @@
     - [Producing to Kafka](#producing-to-kafka)
     - [SQL Shell](#sql-shell)
     - [Checkpoints](#checkpoints)
+    - [Control Center](#control-center)
     - [Statements](#statements)
     - [Savepoints](#savepoints)
     - [Resume from last checkpoint](#resume-from-last-checkpoint)
@@ -59,7 +60,7 @@ Just stop the proxy before and execute again and login with the new token.
 
 ## Start Kafka
 
-Run:
+Run (check https://docs.confluent.io/operator/current/co-plan.html#co-long-image-tags - CFK version 3.1.1):
 
 ```shell
 kubectl create namespace confluent
@@ -67,7 +68,7 @@ kubectl config set-context --current --namespace=confluent
 helm repo add confluentinc https://packages.confluent.io/helm
 helm repo update
 helm upgrade --install operator confluentinc/confluent-for-kubernetes \
-  --version "0.1351.24"
+  --version "0.1351.59"
 ```
 
 Check pod is ready:
@@ -175,14 +176,14 @@ Install Flink Kubernetes Operator:
 kubectl config set-context --current --namespace=confluent
 helm repo add confluentinc  https://packages.confluent.io/helm
 helm repo update
-helm upgrade --install cp-flink-kubernetes-operator confluentinc/flink-kubernetes-operator --version "~1.130.0" --set watchNamespaces="{confluent}"
+helm upgrade --install cp-flink-kubernetes-operator confluentinc/flink-kubernetes-operator --version "1.130.2" --set watchNamespaces="{confluent}"
 ```
 
 Install Confluent Manager for Apache Flink:
 
 ```shell
 helm upgrade --install cmf confluentinc/confluent-manager-for-apache-flink \
-    --version "~2.1.2" --set cmf.sql.production=false \
+    --version "~2.2.0" --set cmf.sql.production=false \
     --namespace confluent
 ```
 
@@ -225,7 +226,7 @@ We can list it:
 confluent flink environment list --url http://localhost:8080
 ```
 
-It should also be listed from the Control Center UI (with no more errors stating it cannot connect to Confluent Manager for Apache Flink SQL).
+It should also be listed from the Control Center UI.
 
 Now we can create our catalog (basically allowing Flink to automatically recognize our kafka cluster, topics and schema registry - no need to create tables and specify Flink connectors as usual with Apache Flink):
 
@@ -242,7 +243,9 @@ You should get something like:
 +---------------+--------------------------+
 ```
 
-With CMF 2.1 catalogs no longer embed Kafka clusters; you must create a separate KafkaDatabase under the catalog. The CLI does not yet support the creation of databases inside the catalog so we will use the CMF REST API:
+You should also be able to see the catalog created in Control Center.
+
+With CMF 2.1+ catalogs no longer embed Kafka clusters; you must create a separate KafkaDatabase under the catalog. The CLI does not yet support the creation of databases inside the catalog so we will use the CMF REST API:
 
 ```shell
 curl -H "Content-Type: application/json" -X POST  http://localhost:8080/cmf/api/v1/catalogs/kafka/kafka-cat/databases -d @flink/database.json
@@ -254,17 +257,21 @@ You can list the databases with:
 curl  http://localhost:8080/cmf/api/v1/catalogs/kafka/kafka-cat/databases
 ```
 
+The kafka cluster/database should also be displayed under the catalog in the ControlCenter.
+
 Now we can create our compute pool (There is no cp-flink-sql 2.x image in CP 8.1, so SQL compute pools must stay on 1.19):
 
 ```shell
 confluent flink compute-pool create flink/compute-pool.json --environment env1 --url http://localhost:8080
 ```
 
-We won't be able to see the compute pool listed in Control Center UI (at least on the current version) but we can list it:
+You cal list:
 
 ```shell
 confluent flink compute-pool list --environment env1 --url http://localhost:8080
 ```
+
+And also should be able to see on ControlCenter.
 
 ## Let's Play
 
@@ -323,6 +330,8 @@ watch kubectl -n confluent get pods
 
 And see the Flink cluster (job manager and task manager) being instantiated (as per our compute pool template definition) to execute our query. Once running the Flink sql shell should start receiving the results from our query. For now we are not sinking those results to anywhere so just receiving it on our shell.
 
+You should also see your statement being executed in Control Center. 
+
 ### Checkpoints
 
 If you navigate to your warehouse bucket in S3proxy you should see something like:
@@ -364,6 +373,40 @@ If we download the result json file it should look something similar to:
 ```json
 {"result":{"id":"88c0f8d3dcc45a31a6878f2d4d2012f6","application-status":"CANCELED","accumulator-results":{"cp-foreground-sink":"rO0ABXNyACVvcmcuYXBhY2hlLmZsaW5rLnV0aWwuT3B0aW9uYWxGYWlsdXJlAAAAAAAAAAEDAAFMAAxmYWlsdXJlQ2F1c2V0ABVMamF2YS9sYW5nL1Rocm93YWJsZTt4cHBzcgATamF2YS51dGlsLkFycmF5TGlzdHiB0h2Zx2GdAwABSQAEc2l6ZXhwAAAAAXcEAAAAAXVyAAJbQqzzF/gGCFTgAgAAeHAAAAA9AAAAOQAAAAAAAALoJTBiZDM2Y2RiLWIwNTItNDNkZi1iMjgyLWE4Mzg1MWU0NzdjYgAAAAAAAALoAAAAAHh4"},"net-runtime":7192080},"version":1}
 ```
+
+### Control Center
+
+We could now directlt from Control Center execute our statement (selecting the compute pool, catalog and database):
+
+```sql
+SELECT
+  window_start,
+  category,
+  SUM(`value`) AS total_value,
+  COUNT(`id`) AS event_count
+FROM
+  TABLE(
+    TUMBLE(
+      TABLE `myevent` ,
+      DESCRIPTOR($rowtime), 
+      INTERVAL '10' SECOND
+    )
+  )
+GROUP BY
+  window_start,
+  window_end,
+  category;
+```
+
+Just like before we should be able to see the Flink cluster (job manager and task manager) being instantiated (as per our compute pool template definition) to execute our query with:
+
+```shell
+watch kubectl -n confluent get pods
+```
+
+And then view the results from inside Control Center.
+
+Stop the statement from Control Center.
 
 ### Statements
 
@@ -428,6 +471,8 @@ You can check the start of the pods (jobmanager and taskmanager) for the executi
 watch kubectl -n confluent get pods
 ```
 
+Before the cluster starts running the statement will show as `Pending` in Control Center.
+
 Once running if you go in Control Center to the message viewer of the topic `myaggregated` you should be able to see it getting populated.
 
 You can check the status of the statement execution by running:
@@ -443,6 +488,8 @@ kubectl port-forward service/flink-statement-rest 8082:8081 -n confluent > /dev/
 ```
 
 And then access http://localhost:8082
+
+From Control Center from the statement view you can also open the `Apache Flink Dashboard` (this is embedding on Control Center and no port forward is needed for this).
 
 ### Savepoints
 
@@ -523,8 +570,10 @@ We could resume it by executing:
 ```shell
 confluent flink statement resume flink-statement --environment env1 --url http://localhost:8080
 ```
-We should be able to see the flink pods being recreated.
-Check its status again:
+
+You should see in Control Center the same statement now is `Pending`.
+And we should be able to see the flink pods being recreated.
+Checking its status again:
 
 ```shell
 confluent flink statement list --environment env1 --url http://localhost:8080
