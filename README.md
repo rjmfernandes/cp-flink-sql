@@ -376,7 +376,7 @@ If we download the result json file it should look something similar to:
 
 ### Control Center
 
-We could now directlt from Control Center execute our statement (selecting the compute pool, catalog and database):
+We could now direct from Control Center execute our statement (selecting the compute pool, catalog and database):
 
 ```sql
 SELECT
