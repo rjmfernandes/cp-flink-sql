@@ -1,2 +1,5 @@
 .DS_Store
 .vscode
+
+flink/flink-sql-runner-example/target
+flink/flink-sql-runner-example/.idea

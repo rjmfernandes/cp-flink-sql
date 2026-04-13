@@ -17,6 +17,7 @@
     - [Savepoints](#savepoints)
     - [Resume from last checkpoint](#resume-from-last-checkpoint)
     - [Resume from a savepoint](#resume-from-a-savepoint)
+- [Flink Application](#flink-application)
     - [Control Center UI Stops Displaying Issue](#control-center-ui-stops-displaying-issue)
 - [Cleanup](#cleanup)
 
@@ -637,6 +638,39 @@ If we check our pods we should see the restart happening. And we can check the s
 confluent flink statement list --environment env1 --url http://localhost:8080
 ```
 
+# Flink Application
+
+Make sure nop statements are running. If you want to minimize resource usage stop the sahred compute pool also.
+
+We will be leveraging the standard flink-sql-runner-example (https://github.com/apache/flink-kubernetes-operator/tree/main/examples/flink-sql-runner-example).
+
+Compile:
+
+```shell
+cd flink/flink-sql-runner-example
+mvn clean verify
+```
+
+Build the docker image and load in kind (it may take a bit to load cause the flink image is not so small):
+
+```shell
+DOCKER_BUILDKIT=1 docker build . -t flink-sql-runner-example:latest
+kind load docker-image flink-sql-runner-example:latest
+```
+
+And now create our application:
+
+```shell
+cd ..
+confluent flink application create application-sql-minimal.json --environment env1 --url http://localhost:8080
+```
+
+Check pods are ready (1 job manager and 1 task manager):
+
+```shell
+watch kubectl get pods
+```
+
 ### Control Center UI Stops Displaying Issue
 
 You may loose access to Control Center UI. In such cases you will need to stop the process ocuppying the port 9021 (the forward of the C3 pod) and restart the forwarding. If you are on a mac do as follows:
@@ -653,8 +687,11 @@ Then reexecute:
 kubectl -n confluent port-forward controlcenter-ng-0 9021:9021 > /dev/null 2>&1 &
 ```
 
+Check `myaggregated`is being populated.
+
 # Cleanup
 
 ```shell
+rm -fr flink/flink-sql-runner-example/target
 kind delete cluster
 ```
