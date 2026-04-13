@@ -640,7 +640,7 @@ confluent flink statement list --environment env1 --url http://localhost:8080
 
 # Flink Application
 
-Make sure nop statements are running. If you want to minimize resource usage stop the sahred compute pool also.
+Make sure no statements are running. If you want to minimize resource usage stop the shared compute pool also.
 
 We will be leveraging the standard flink-sql-runner-example (https://github.com/apache/flink-kubernetes-operator/tree/main/examples/flink-sql-runner-example).
 
