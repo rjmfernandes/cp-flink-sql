@@ -18,7 +18,7 @@
     - [Resume from last checkpoint](#resume-from-last-checkpoint)
     - [Resume from a savepoint](#resume-from-a-savepoint)
 - [Flink Application](#flink-application)
-    - [Control Center UI Stops Displaying Issue](#control-center-ui-stops-displaying-issue)
+- [Control Center UI Stops Displaying Issue](#control-center-ui-stops-displaying-issue)
 - [Cleanup](#cleanup)
 
 ## Disclaimer
@@ -671,7 +671,7 @@ Check pods are ready (1 job manager and 1 task manager):
 watch kubectl get pods
 ```
 
-### Control Center UI Stops Displaying Issue
+# Control Center UI Stops Displaying Issue
 
 You may loose access to Control Center UI. In such cases you will need to stop the process ocuppying the port 9021 (the forward of the C3 pod) and restart the forwarding. If you are on a mac do as follows:
 
