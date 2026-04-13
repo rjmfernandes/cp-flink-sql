@@ -60,7 +60,7 @@ Just stop the proxy before and execute again and login with the new token.
 
 ## Start Kafka
 
-Run (check https://docs.confluent.io/operator/current/co-plan.html#co-long-image-tags - CFK version 3.1.1):
+Run (check https://docs.confluent.io/operator/current/co-plan.html#co-long-image-tags - CFK version 3.2.1):
 
 ```shell
 kubectl create namespace confluent
@@ -68,7 +68,7 @@ kubectl config set-context --current --namespace=confluent
 helm repo add confluentinc https://packages.confluent.io/helm
 helm repo update
 helm upgrade --install operator confluentinc/confluent-for-kubernetes \
-  --version "0.1351.59"
+  --version "0.1514.19"
 ```
 
 Check pod is ready:
