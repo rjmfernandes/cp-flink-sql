@@ -259,7 +259,7 @@ curl  http://localhost:8080/cmf/api/v1/catalogs/kafka/kafka-cat/databases
 
 The kafka cluster/database should also be displayed under the catalog in the ControlCenter.
 
-Now we can create our compute pool (There is no cp-flink-sql 2.x image in CP 8.1, so SQL compute pools must stay on 1.19):
+Now we can create our compute pool (There is no cp-flink-sql 2.x image in CP 8.2, so SQL compute pools must stay on 1.19):
 
 ```shell
 confluent flink compute-pool create flink/compute-pool.json --environment env1 --url http://localhost:8080
@@ -351,7 +351,7 @@ Let's review the meaning of each folder/file:
     - `completedCheckpoint…` This is NOT the checkpoint data. It’s HA metadata that represents the CompletedCheckpointStore pointer/registry (basically “what checkpoints are considered completed and usable for recovery” and references to them).
     - `submittedJobGraph…` This is the submitted JobGraph (the job definition that the dispatcher/jobmanager uses to recover the job after failover). If the JM dies and comes back, this is one of the things it consults to resubmit/recreate execution. 
 
-Let's stop our process by quitting the query in the shell and exiting. Once you hit `Q` quiting the execution of the query the cluster created should be terminated. Now you can quit the sql shell `quit;`. 
+Let's stop our process by quitting the query in the shell and exiting. Once you hit `Q` quiting the execution of the query the cluster created should NOT be terminated because we are running a `SHARED` compute pool. Now you can quit the sql shell `quit;`. 
 
 You should be able to see the Flink pods getting terminated and removed with:
 
@@ -398,13 +398,9 @@ GROUP BY
   category;
 ```
 
-Just like before we should be able to see the Flink cluster (job manager and task manager) being instantiated (as per our compute pool template definition) to execute our query with:
+It will reuse the same shared compute pool.
 
-```shell
-watch kubectl -n confluent get pods
-```
-
-And then view the results from inside Control Center.
+You can now view the results from inside Control Center.
 
 Stop the statement from Control Center.
 
@@ -463,12 +459,6 @@ You should get as response something like this:
 | SQL Kind      | INSERT_INTO                                           |
 | Append Only   | true                                                  |
 +---------------+-------------------------------------------------------+
-```
-
-You can check the start of the pods (jobmanager and taskmanager) for the execution of our statement just like before with:
-
-```shell
-watch kubectl -n confluent get pods
 ```
 
 Before the cluster starts running the statement will show as `Pending` in Control Center.
