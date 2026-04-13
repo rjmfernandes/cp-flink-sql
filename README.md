@@ -176,14 +176,14 @@ Install Flink Kubernetes Operator:
 kubectl config set-context --current --namespace=confluent
 helm repo add confluentinc  https://packages.confluent.io/helm
 helm repo update
-helm upgrade --install cp-flink-kubernetes-operator confluentinc/flink-kubernetes-operator --version "1.130.2" --set watchNamespaces="{confluent}"
+helm upgrade --install cp-flink-kubernetes-operator confluentinc/flink-kubernetes-operator --version "1.130.3" --set watchNamespaces="{confluent}"
 ```
 
 Install Confluent Manager for Apache Flink:
 
 ```shell
 helm upgrade --install cmf confluentinc/confluent-manager-for-apache-flink \
-    --version "~2.2.0" --set cmf.sql.production=false \
+    --version "~2.3.0" --set cmf.sql.production=false \
     --namespace confluent
 ```
 
