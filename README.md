@@ -296,7 +296,7 @@ You can see on Control Center the topic `myevent`start to get populated.
 
 ### SQL Shell
 
-Now in another shell we can open a flink shell using our compute pool and query our topic:
+Now in another shell we can open a flink shell using our compute pool and query our topic (this should lead to the instantiation of the corresponding shared Flink job manager):
 
 ```shell
 confluent --url http://localhost:8080 --environment env1 --compute-pool pool flink shell
@@ -330,7 +330,7 @@ Meanwhile in another shell you could run:
 watch kubectl -n confluent get pods
 ```
 
-And see the Flink cluster (job manager and task manager) being instantiated (as per our compute pool template definition) to execute our query. Once running the Flink sql shell should start receiving the results from our query. For now we are not sinking those results to anywhere so just receiving it on our shell.
+And see the Flink cluster task manager being instantiated (as per our compute pool template definition) to execute our query. Once running the Flink sql shell should start receiving the results from our query. For now we are not sinking those results to anywhere so just receiving it on our shell.
 
 You should also see your statement being executed in Control Center. 
 
