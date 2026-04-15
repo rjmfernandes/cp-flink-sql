@@ -17,6 +17,7 @@
     - [Savepoints](#savepoints)
     - [Resume from last checkpoint](#resume-from-last-checkpoint)
     - [Resume from a savepoint](#resume-from-a-savepoint)
+- [More Flink SQL Playing](#more-flink-sql-playing)
 - [Flink Application](#flink-application)
 - [Control Center UI Stops Displaying Issue](#control-center-ui-stops-displaying-issue)
 - [Cleanup](#cleanup)
@@ -636,6 +637,71 @@ If we check our pods we should see the restart happening. And we can check the s
 
 ```shell
 confluent flink statement list --environment env1 --url http://localhost:8080
+```
+
+# More Flink SQL Playing
+
+Stop all statements. And now only from Control Center let's execute:
+
+```sql
+CREATE TABLE myevent2 (
+  `id` STRING,
+  `value` INT NOT NULL,
+  `event_time` TIMESTAMP(3),
+  `category` STRING,
+  WATERMARK FOR `event_time` AS `event_time`
+);
+```
+
+For using `event_time` as our watermark.
+
+We can then populate it:
+
+```sql
+INSERT INTO myevent2
+/*+ OPTIONS('properties.transaction.timeout.ms'='300000') */
+SELECT `id`,
+ `value`,
+  `event_time`,
+`category`
+FROM myevent;
+```
+
+Leave it running we should see the new created topic `myevent2` getting populated.
+
+Now we create also a new `myaggregated2` table/topic:
+
+```sql
+CREATE TABLE myaggregated2 (
+window_start TIMESTAMP(3) NOT NULL,
+category STRING,
+total_value INT NOT NULL,
+event_count BIGINT NOT NULL
+);
+```
+
+And populate it as before but using `event_time` and not `$rowtime`:
+
+```sql
+INSERT INTO `myaggregated2`
+/*+ OPTIONS('properties.transaction.timeout.ms'='300000') */
+SELECT
+  window_start,
+  category,
+  CAST(SUM(`value`) AS INT) AS total_value,
+  COUNT(`id`) AS event_count
+FROM
+  TABLE(
+    TUMBLE(
+      TABLE `myevent2`,
+      DESCRIPTOR(`event_time`),
+      INTERVAL '10' SECOND
+    )
+  )
+GROUP BY
+  window_start,
+  window_end,
+  category;
 ```
 
 # Flink Application
