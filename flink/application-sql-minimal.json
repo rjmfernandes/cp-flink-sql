@@ -21,14 +21,14 @@
       },
       "jobManager": {
          "resource": {
-         "cpu": 1,
+         "cpu": 0.5,
          "memory": "1048m"
          }
       },
       "serviceAccount": "flink",
       "taskManager": {
          "resource": {
-         "cpu": 1,
+         "cpu": 0.5,
          "memory": "1048m"
          }
       }

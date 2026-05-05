@@ -15,7 +15,7 @@ CREATE TABLE myevent (
 );
 
 CREATE TABLE myaggregated (
-  `window_start` TIMESTAMP(3),
+  `window_start` TIMESTAMP(3) NOT NULL,
   `category` STRING,
   `total_value` INT NOT NULL,
   `event_count` BIGINT NOT NULL
@@ -26,8 +26,20 @@ CREATE TABLE myaggregated (
   'properties.transaction.timeout.ms' = '300000',
   'value.format' = 'avro-confluent',
   'value.avro-confluent.url' = 'http://schemaregistry.confluent.svc.cluster.local:8081',
-  'value.avro-confluent.subject' = 'myaggregated-value'
+  'value.avro-confluent.subject' = 'myaggregated-value',
+  'value.avro-confluent.schema' = '{
+    "type":"record",
+    "name":"MyAggregated",
+    "namespace":"com.example.flink.aggregated",
+    "fields":[
+      {"name":"window_start","type":{"type":"long","logicalType":"timestamp-millis"}},
+      {"name":"category","type":["null","string"]},
+      {"name":"total_value","type":"int"},
+      {"name":"event_count","type":"long"}
+    ]
+  }'
 );
+
 
 INSERT INTO `myaggregated`
 SELECT

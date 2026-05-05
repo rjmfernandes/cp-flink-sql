@@ -121,7 +121,7 @@ spec:
        image: confluentinc/cp-enterprise-alertmanager:2.5.0
   configOverrides:
     server:
-      - confluent.controlcenter.cmf.enable=True
+      - confluent.controlcenter.cmf.enable=true
       - confluent.controlcenter.cmf.url=http://cmf-service:80
       - confluent.controlcenter.replication.factor=1
       - confluent.controlcenter.monitoring.interceptor.topic.partitions=1
