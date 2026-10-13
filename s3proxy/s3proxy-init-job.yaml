@@ -7,17 +7,21 @@ spec:
     spec:
       restartPolicy: OnFailure
       containers:
-      - name: mc
-        image: minio/mc:latest
+      - name: awscli
+        image: amazon/aws-cli:latest
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          value: "admin"
+        - name: AWS_SECRET_ACCESS_KEY
+          value: "password"
+        - name: AWS_DEFAULT_REGION
+          value: "us-east-1"
         command:
         - /bin/sh
         - -c
         - |
-          until mc alias set s3proxy http://s3proxy:8000 admin password; do
-            echo '...waiting...'
-            sleep 1
-          done
-          mc mb -p s3proxy/warehouse
+          aws --endpoint-url http://s3proxy:8000 s3api head-bucket --bucket warehouse 2>/dev/null \
+            || aws --endpoint-url http://s3proxy:8000 s3 mb s3://warehouse
       initContainers:
       - name: wait-for-s3proxy
         image: busybox:1.28

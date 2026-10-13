@@ -178,15 +178,20 @@ Install Flink Kubernetes Operator:
 kubectl config set-context --current --namespace=confluent
 helm repo add confluentinc  https://packages.confluent.io/helm
 helm repo update
-helm upgrade --install cp-flink-kubernetes-operator confluentinc/flink-kubernetes-operator --version "1.130.3" --set watchNamespaces="{confluent}"
+helm upgrade --install cp-flink-kubernetes-operator \
+  confluentinc/flink-kubernetes-operator \
+  --version "~1.150.0" \
+  --set watchNamespaces="{confluent}"
 ```
 
 Install Confluent Manager for Apache Flink:
 
 ```shell
-helm upgrade --install cmf confluentinc/confluent-manager-for-apache-flink \
-    --version "~2.3.0" --set cmf.sql.production=false \
-    --namespace confluent
+helm upgrade --install cmf \
+  confluentinc/confluent-manager-for-apache-flink \
+  --version "~2.4.0" \
+  --set cmf.sql.production=false \
+  --namespace confluent
 ```
 
 Check pods are ready (CFO and CMF):
@@ -305,23 +310,10 @@ confluent --url http://localhost:8080 --environment env1 --compute-pool pool fli
 We can run the following query over our topic:
 
 ```sql
-SELECT
-  window_start,
-  category,
-  SUM(`value`) AS total_value,
-  COUNT(`id`) AS event_count
-FROM
-  TABLE(
-    TUMBLE(
-      TABLE `myevent` ,
-      DESCRIPTOR($rowtime), 
-      INTERVAL '10' SECOND
-    )
-  )
-GROUP BY
-  window_start,
-  window_end,
-  category;
+SELECT window_start, category, SUM(`value`) AS total_value,
+       COUNT(`id`) AS event_count
+FROM TABLE(TUMBLE(TABLE `myevent`, DESCRIPTOR($rowtime), INTERVAL '10' SECOND))
+GROUP BY window_start, window_end, category;
 ```
 
 Meanwhile in another shell you could run:
@@ -359,21 +351,6 @@ You should be able to see the Flink pods getting terminated and removed with:
 
 ```shell
 watch kubectl -n confluent get pods
-```
-
-If we check on Cyberduck again:
-
-![Job Result Store](images/jobresult.png)
-
-- `job-result-store/` It's used by Flink’s Dispatcher / HA layer to persist the final outcome of a job so that: the cluster knows whether a job FINISHED, FAILED, or was CANCELED; the result survives JobManager restarts; clients (SQL Client, REST API) can still query job status after termination. This is not checkpoint state and not HA blobs — it’s purely job lifecycle metadata.
-  - `cli-20260119-…` This is the Dispatcher / client session ID (same prefix you saw elsewhere). Think: “this SQL Client / session submitted jobs under this namespace” 
-    - `7fb…` This is the JobID of the job completed, failed or canceled.
-      - `88c….json` Usually contains: jobId, application / job name, final status = CANCELED/FINISHED/FAILED, timestamps, possibly partial execution metadata. It’s intentionally small. A job result marked as `DIRTY.json` means: “This job did not terminate in a globally clean, finalized way.” Typical causes: Job was CANCELLED, JobManager crashed during termination, HA recovery was interrupted. 
-
-If we download the result json file it should look something similar to:
-
-```json
-{"result":{"id":"88c0f8d3dcc45a31a6878f2d4d2012f6","application-status":"CANCELED","accumulator-results":{"cp-foreground-sink":"rO0ABXNyACVvcmcuYXBhY2hlLmZsaW5rLnV0aWwuT3B0aW9uYWxGYWlsdXJlAAAAAAAAAAEDAAFMAAxmYWlsdXJlQ2F1c2V0ABVMamF2YS9sYW5nL1Rocm93YWJsZTt4cHBzcgATamF2YS51dGlsLkFycmF5TGlzdHiB0h2Zx2GdAwABSQAEc2l6ZXhwAAAAAXcEAAAAAXVyAAJbQqzzF/gGCFTgAgAAeHAAAAA9AAAAOQAAAAAAAALoJTBiZDM2Y2RiLWIwNTItNDNkZi1iMjgyLWE4Mzg1MWU0NzdjYgAAAAAAAALoAAAAAHh4"},"net-runtime":7192080},"version":1}
 ```
 
 ### Control Center
@@ -473,15 +450,7 @@ You can check the status of the statement execution by running:
 confluent flink statement list --environment env1 --url http://localhost:8080
 ```
 
-You can also open the Flink UI by executing:
-
-```shell
-kubectl port-forward service/flink-statement-rest 8082:8081 -n confluent > /dev/null 2>&1 &
-```
-
-And then access http://localhost:8082
-
-From Control Center from the statement view you can also open the `Apache Flink Dashboard` (this is embedding on Control Center and no port forward is needed for this).
+From Control Center from the statement view you can also open the `Apache Flink Dashboard` (this is the Flink UI embedded on Control Center and no port forward is needed for this).
 
 ### Savepoints
 
