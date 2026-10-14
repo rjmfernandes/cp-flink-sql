@@ -6,7 +6,6 @@
   - [Start Kind K8s Cluster](#start-kind-k8s-cluster)
   - [Start Kafka](#start-kafka)
   - [Start S3proxy](#start-s3proxy)
-  - [Install Confluent Manager for Apache Flink](#install-confluent-manager-for-apache-flink)
 - [Flink SQL](#flink-sql)
   - [Let's Play](#lets-play)
     - [Producing to Kafka](#producing-to-kafka)
@@ -158,7 +157,7 @@ Secret Access Key   password
 
 It should list just a single folder named `warehouse`.
 
-## Install Confluent Manager for Apache Flink
+w## Install Confluent Manager for Apache Flink
 
 Install certificate manager:
 
@@ -206,7 +205,7 @@ Open port forwarding for CMF:
 kubectl port-forward service/cmf-service 8080:80 -n confluent > /dev/null 2>&1 &
 ```
 
-At this point no error `The system cannot connect to Confluent Manager for Apache Flink.` should show up in Control Center home page.
+You can browse now to http://localhost:8080 to access the CMF UI.
 
 # Flink SQL
 
@@ -233,7 +232,7 @@ We can list it:
 confluent flink environment list --url http://localhost:8080
 ```
 
-It should also be listed from the Control Center UI.
+It should also be listed from the CMF UI.
 
 Now we can create our catalog (basically allowing Flink to automatically recognize our kafka cluster, topics and schema registry - no need to create tables and specify Flink connectors as usual with Apache Flink):
 
@@ -250,7 +249,7 @@ You should get something like:
 +---------------+--------------------------+
 ```
 
-You should also be able to see the catalog created in Control Center.
+You should also be able to see the catalog created in the CMF UI.
 
 With CMF 2.1+ catalogs no longer embed Kafka clusters; you must create a separate KafkaDatabase under the catalog:
 
@@ -264,7 +263,7 @@ You can list the databases with:
 confluent flink catalog database list --catalog kafka-cat --url http://localhost:8080
 ```
 
-The kafka cluster/database should also be displayed under the catalog in the ControlCenter.
+The kafka cluster/database should also be displayed under the catalog in the CMF UI.
 
 Now we can create our compute pool (There is no cp-flink-sql 2.x image in CP 8.2, so SQL compute pools must stay on 1.19):
 
@@ -278,7 +277,7 @@ You cal list:
 confluent flink compute-pool list --environment env1 --url http://localhost:8080
 ```
 
-And also should be able to see on ControlCenter.
+And also should be able to see on CMF UI.
 
 ## Let's Play
 
