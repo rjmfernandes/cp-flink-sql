@@ -11,7 +11,7 @@
     - [Producing to Kafka](#producing-to-kafka)
     - [SQL Shell](#sql-shell)
     - [Checkpoints](#checkpoints)
-    - [Control Center](#control-center)
+    - [CMF UI](#cmf-ui)
     - [Statements](#statements)
     - [Savepoints](#savepoints)
     - [Resume from last checkpoint](#resume-from-last-checkpoint)
@@ -323,7 +323,7 @@ watch kubectl -n confluent get pods
 
 And see the Flink cluster task manager being instantiated (as per our compute pool template definition) to execute our query. Once running the Flink sql shell should start receiving the results from our query. For now we are not sinking those results to anywhere so just receiving it on our shell.
 
-You should also see your statement being executed in Control Center. 
+You should also see your statement being executed in the CMF UI. 
 
 ### Checkpoints
 
@@ -352,9 +352,9 @@ You should be able to see the Flink pods getting terminated and removed with:
 watch kubectl -n confluent get pods
 ```
 
-### Control Center
+### CMF UI
 
-We could now direct from Control Center execute our statement (selecting the compute pool, catalog and database):
+We could now direct from the CMF UI execute our statement (selecting the compute pool, catalog and database):
 
 ```sql
 SELECT
@@ -378,9 +378,9 @@ GROUP BY
 
 It will reuse the same shared compute pool.
 
-You can now view the results from inside Control Center.
+You can now view the results from inside CMF UI.
 
-Stop the statement from Control Center.
+Stop the statement from CMF UI.
 
 ### Statements
 
@@ -439,7 +439,7 @@ You should get as response something like this:
 +---------------+-------------------------------------------------------+
 ```
 
-Before the cluster starts running the statement will show as `Pending` in Control Center.
+Before the cluster starts running the statement will show as `Pending` in the CMF UI.
 
 Once running if you go in Control Center to the message viewer of the topic `myaggregated` you should be able to see it getting populated.
 
@@ -449,7 +449,7 @@ You can check the status of the statement execution by running:
 confluent flink statement list --environment env1 --url http://localhost:8080
 ```
 
-From Control Center from the statement view you can also open the `Apache Flink Dashboard` (this is the Flink UI embedded on Control Center and no port forward is needed for this).
+From CMF UI from the statement view you can also open the `Apache Flink Dashboard` (this is the Flink UI embedded on CMF UI and no port forward is needed for this).
 
 ### Savepoints
 
@@ -531,7 +531,7 @@ We could resume it by executing:
 confluent flink statement resume flink-statement --environment env1 --url http://localhost:8080
 ```
 
-You should see in Control Center the same statement now is `Pending`.
+You should see in CMF UI the same statement now is `Pending`.
 And we should be able to see the flink pods being recreated.
 Checking its status again:
 
@@ -609,7 +609,7 @@ confluent flink statement list --environment env1 --url http://localhost:8080
 
 # More Flink SQL Playing
 
-Stop all statements. And now only from Control Center let's execute:
+Stop all statements. And now only from CMF UI let's execute:
 
 ```sql
 CREATE TABLE myevent2 (
