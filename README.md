@@ -252,16 +252,16 @@ You should get something like:
 
 You should also be able to see the catalog created in Control Center.
 
-With CMF 2.1+ catalogs no longer embed Kafka clusters; you must create a separate KafkaDatabase under the catalog. The CLI does not yet support the creation of databases inside the catalog so we will use the CMF REST API:
+With CMF 2.1+ catalogs no longer embed Kafka clusters; you must create a separate KafkaDatabase under the catalog:
 
 ```shell
-curl -H "Content-Type: application/json" -X POST  http://localhost:8080/cmf/api/v1/catalogs/kafka/kafka-cat/databases -d @flink/database.json
+confluent flink catalog database create flink/database.json --catalog kafka-cat --url http://localhost:8080
 ```
 
 You can list the databases with:
 
 ```shell
-curl  http://localhost:8080/cmf/api/v1/catalogs/kafka/kafka-cat/databases
+confluent flink catalog database list --catalog kafka-cat --url http://localhost:8080
 ```
 
 The kafka cluster/database should also be displayed under the catalog in the ControlCenter.
