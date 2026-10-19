@@ -6,6 +6,7 @@
   - [Start Kind K8s Cluster](#start-kind-k8s-cluster)
   - [Start Kafka](#start-kafka)
   - [Start S3proxy](#start-s3proxy)
+  - [Install Confluent Manager for Apache Flink](#install-confluent-manager-for-apache-flink)
 - [Flink SQL](#flink-sql)
   - [Let's Play](#lets-play)
     - [Producing to Kafka](#producing-to-kafka)
@@ -61,7 +62,7 @@ Just stop the proxy before and execute again and login with the new token.
 
 ## Start Kafka
 
-Run (check https://docs.confluent.io/operator/current/co-plan.html#co-long-image-tags - CFK version 3.2.1):
+Run (check https://docs.confluent.io/operator/current/co-plan.html#co-long-image-tags - CFK version 3.3.1):
 
 ```shell
 kubectl create namespace confluent
@@ -69,7 +70,7 @@ kubectl config set-context --current --namespace=confluent
 helm repo add confluentinc https://packages.confluent.io/helm
 helm repo update
 helm upgrade --install operator confluentinc/confluent-for-kubernetes \
-  --version "0.1514.19"
+  --version "0.1718.99"
 ```
 
 Check pod is ready:
@@ -78,7 +79,7 @@ Check pod is ready:
 watch kubectl get pods
 ```
 
-Once the operator pod is ready we install our CP nodes:
+Once the operator pod is running we install our CP nodes:
 
 ```shell
 kubectl apply -f kafka/kafka.yaml
@@ -157,7 +158,7 @@ Secret Access Key   password
 
 It should list just a single folder named `warehouse`.
 
-w## Install Confluent Manager for Apache Flink
+## Install Confluent Manager for Apache Flink
 
 Install certificate manager:
 
