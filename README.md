@@ -19,6 +19,11 @@
     - [Resume from a savepoint](#resume-from-a-savepoint)
 - [More Flink SQL Playing](#more-flink-sql-playing)
 - [Flink Application](#flink-application)
+- [Use CMF through MCP](#use-cmf-through-mcp)
+  - [Enable MCP in CMF](#enable-mcp-in-cmf)
+  - [Connect GitHub Copilot in VS Code](#connect-github-copilot-in-vs-code)
+  - [Test MCP from Copilot Chat](#test-mcp-from-copilot-chat)
+  - [write-tools](#write-tools)
 - [Control Center UI Stops Displaying Issue](#control-center-ui-stops-displaying-issue)
 - [Cleanup](#cleanup)
 
@@ -505,6 +510,8 @@ And you should see in Cyberduck something like:
 
 ![Savepoints](images/savepoints.png)
 
+Also on the CMF UI the attached savepoint should be listed for the statement.
+
 ### Resume from last checkpoint
 
 Let's stop first our process by executing:
@@ -563,6 +570,8 @@ confluent flink savepoint list \
   --url http://localhost:8080 \
   -o yaml
 ```
+
+We should see we have besides the original manual `save-explicit-1` we have others automatically generated related to stopped instances. 
 
 Now we can leverage the CMF REST API (since this is not yet available on Confluent CLI):
 
@@ -705,6 +714,144 @@ Check pods are ready (1 job manager and 1 task manager):
 ```shell
 watch kubectl get pods
 ```
+
+It should be writing to the `myaggregated` topic.
+
+# Use CMF through MCP
+
+CMF 2.4 includes an MCP server for AI assistants and coding agents.
+
+## Enable MCP in CMF
+
+MCP is disabled by default. Read-only tools and log access are controlled independently.
+
+We will be using readonly first:
+
+```yaml
+cmf:
+  mcp:
+    enabled: true
+    writeTools:
+      enabled: false
+    logs:
+      enabled: true
+
+```
+
+Execute (make sure you are at the root of the project, so the first command bellow assumed you were left inside the flink app before):
+
+```shell
+cd ..
+```
+
+```shell
+helm upgrade --install cmf \
+  confluentinc/confluent-manager-for-apache-flink \
+  --version "~2.4.0" \
+  --set cmf.sql.production=false \
+  -f flink/mcp/values-readonly.yaml \
+  --namespace confluent
+```
+
+You will need to rerun:
+
+```shell
+kubectl port-forward service/cmf-service 8080:80 -n confluent > /dev/null 2>&1 &
+```
+
+## Connect GitHub Copilot in VS Code
+
+Open this project in VS Code with GitHub Copilot available. The workspace configuration at [.vscode/mcp.json](.vscode/mcp.json) connects to the CMF MCP endpoint:
+
+```json
+{
+  "servers": {
+    "cmf": {
+      "type": "http",
+      "url": "http://localhost:8080/cmf/mcp/v1alpha1"
+    }
+  }
+}
+```
+
+VS Code uses `servers`, not the `mcpServers` configuration in `~/.copilot/mcp-config.json`. That file is for Copilot CLI and does not register the server in VS Code.
+
+1. Keep the CMF port-forward running so `http://localhost:8080` remains accessible.
+2. Open the Command Palette (`Cmd+Shift+P` on macOS) and run **MCP: List Servers**.
+3. Select **cmf**, then **Start Server**, and accept the server trust prompt if shown. For this HTTP endpoint, starting the server connects VS Code to the already-running CMF server; it does not launch another CMF instance.
+4. Open Copilot Chat, select **Agent** mode, and enable the CMF tools in the tools picker.
+5. If `cmf` is not listed, confirm that this project is the open workspace and that the configuration above is saved. Run **Developer: Reload Window** and list the servers again. For connection errors, select **cmf** in **MCP: List Servers** and inspect **Show Output**.
+
+## Test MCP from Copilot Chat
+
+Run these prompts one at a time. Check the tool calls in Copilot Chat to confirm that Copilot uses CMF MCP rather than terminal commands. Approve read-only tool calls when prompted. Responses reflect the current environment, not fixed example counts.
+
+1. Check connectivity, the CMF version, and the resource inventory:
+
+```text
+Use CMF MCP to show the CMF version and resource counts.
+Use MCP tools only; do not run terminal commands or change resources.
+```
+
+2. Inspect the environment and its compute pool:
+
+```text
+Use CMF MCP to inspect environment env1.
+Show its compute pools, then show the status and resource usage of compute pool pool.
+Distinguish configured resources from reported usage and flag missing metrics.
+Do not change resources.
+```
+
+3. Inspect the statement created earlier:
+
+```text
+Use CMF MCP to inspect statement flink-statement in environment env1.
+Show its SQL, phase, status, compute pool, and available result rows.
+If result rows are not supported for its SQL kind or phase, explain why.
+Do not resume or modify the statement.
+```
+
+`flink-statement` is an INSERT that writes to Kafka topic `myaggregated`, not an interactive SELECT. The MCP results tool only supports interactive SELECT statements in RUNNING or COMPLETED phase. To test result retrieval, use the name of a running SELECT from the earlier SQL shell or CMF UI steps instead; do not expect result rows from the INSERT.
+
+4. Review environment health without changing resources:
+
+```text
+Use CMF MCP to check the health of environment env1.
+Inspect its applications, compute pools, and statements.
+Summarize unhealthy, pending, stopped, failing, or failed resources.
+Distinguish stopped resources from failures. If no dedicated health-check tool is
+available, use the resource listing and detail tools and state that limitation.
+Do not change resources.
+```
+
+The read-only configuration keeps write tools disabled. These checks do not create, resume, stop, or delete resources. Stopped statements may be expected after the previous exercises, while the separate Flink application can still be running.
+
+## write-tools
+
+Let's now play with the write-tools enabled:
+
+```yaml
+cmf:
+  mcp:
+    enabled: true
+    writeTools:
+      enabled: true
+    logs:
+      enabled: true
+```
+
+Execute:
+
+```shell
+helm upgrade cmf \
+  confluentinc/confluent-manager-for-apache-flink \
+  --version "~2.4.0" \
+  --set cmf.sql.production=false \
+  -f flink/mcp/values-write.yaml \
+  --namespace confluent
+```
+
+Check the creation of the statement and see its results.
 
 # Control Center UI Stops Displaying Issue
 

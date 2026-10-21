@@ -1,0 +1,7 @@
+cmf:
+  mcp:
+    enabled: true
+    writeTools:
+      enabled: true
+    logs:
+      enabled: true

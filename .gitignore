@@ -1,5 +1,6 @@
 .DS_Store
-.vscode
+.vscode/*
+!.vscode/mcp.json
 
 flink/flink-sql-runner-example/target
 flink/flink-sql-runner-example/.idea

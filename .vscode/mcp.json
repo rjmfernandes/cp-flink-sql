@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "cmf": {
+      "type": "http",
+      "url": "http://localhost:8080/cmf/mcp/v1alpha1"
+    }
+  }
+}
