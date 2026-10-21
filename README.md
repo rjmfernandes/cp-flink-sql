@@ -24,6 +24,7 @@
   - [Connect GitHub Copilot in VS Code](#connect-github-copilot-in-vs-code)
   - [Test MCP from Copilot Chat](#test-mcp-from-copilot-chat)
   - [write-tools](#write-tools)
+- [Other relevant topics in CMF 2.4 not covered in this demo](#other-relevant-topics-in-cmf-24-not-covered-in-this-demo)
 - [Control Center UI Stops Displaying Issue](#control-center-ui-stops-displaying-issue)
 - [Cleanup](#cleanup)
 
@@ -95,6 +96,8 @@ And wait for all pods (1 kraft, 1 broker, 1 SR, 1 C3) to be ready (it will take 
 ```shell
 watch kubectl -n confluent get pods
 ```
+
+You should see Schema Registry (and Control Center NG) restarting a couple of times until kafka cluster is available.
 
 Once everything is completely ready you should have something like this:
 
@@ -321,6 +324,8 @@ FROM TABLE(TUMBLE(TABLE `myevent`, DESCRIPTOR($rowtime), INTERVAL '10' SECOND))
 GROUP BY window_start, window_end, category;
 ```
 
+You may have an error executing first cause the CMF resources may not be fully available yet. Try to execute again.
+
 Meanwhile in another shell you could run:
 
 ```shell
@@ -385,6 +390,20 @@ GROUP BY
 It will reuse the same shared compute pool.
 
 You can now view the results from inside CMF UI.
+
+It may be that it gets stucked on PENDING the first time you execute. With exceptions:
+
+```
+java.lang.IllegalStateException: Trying to access closed classloader. Please check if you store classloaders directly or indirectly in static fields. If the stacktrace suggests that the leak occurs in a third party library and cannot be fixed immediately, you can disable this check with the configuration 'classloader.check-leaked-classloader'.
+```
+
+If it happens delete the task manager and check if on recreation it gets sorted:
+
+```shell
+kubectl -n confluent delete pod pool-taskmanager-1-1
+```
+
+(still investigating what exactly causes this)
 
 Stop the statement from CMF UI.
 
@@ -852,6 +871,11 @@ helm upgrade cmf \
 ```
 
 Check the creation of the statement and see its results.
+
+# Other relevant topics in CMF 2.4 not covered in this demo
+ - Periodic Savepoints
+ - UDF Artifact Management
+ - Custom Connector 
 
 # Control Center UI Stops Displaying Issue
 
