@@ -870,6 +870,20 @@ helm upgrade cmf \
   --namespace confluent
 ```
 
+You will need to rerun:
+
+```shell
+kubectl port-forward service/cmf-service 8080:80 -n confluent > /dev/null 2>&1 &
+```
+
+Now we can prompt:
+
+```
+Create a disposable test Flink SQL statement in environment env1,
+using catalog kafka-cat, database main-kafka-cluster, and compute pool pool.
+Ask for confirmation before creating it.
+```
+
 Check the creation of the statement and see its results.
 
 # Other relevant topics in CMF 2.4 not covered in this demo
